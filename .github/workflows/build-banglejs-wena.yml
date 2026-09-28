@@ -27,7 +27,7 @@ jobs:
 
       - name: Extract Gadgetbridge source
         run: |
-          tar -xzf com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+          tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz
           cd com.espruino.gadgetbridge.banglejs_252_src.tar.gz
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
