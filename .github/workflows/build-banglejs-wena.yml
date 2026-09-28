@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout workflow repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Java
@@ -23,24 +23,44 @@ jobs:
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-36" "build-tools;36.1.0" "platform-tools"
+          sdkmanager \
+            "platforms;android-36" \
+            "build-tools;36.1.0" \
+            "platform-tools"
 
       - name: Extract Gadgetbridge source
         run: |
           mkdir -p extracted
-          tar -xzf com.espruino.gadgetbridge.banglejs_252_src.tar.gz -C extracted
-          mv extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz gadgetbridge
-          echo "sdk.dir=$ANDROID_HOME" > gadgetbridge/local.properties
-          chmod +x gadgetbridge/gradlew
+
+          tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz \
+            -C extracted
+
+          echo "=== Extracted files ==="
+          find extracted -maxdepth 3 -type f -name gradlew -print
+
+          SOURCE_DIR=$(find extracted -type f -name gradlew -print -quit | xargs dirname)
+
+          if [ -z "$SOURCE_DIR" ]; then
+            echo "ERROR: gradlew not found in extracted source"
+            exit 1
+          fi
+
+          echo "SOURCE_DIR=$SOURCE_DIR"
+
+          echo "sdk.dir=$ANDROID_HOME" > "$SOURCE_DIR/local.properties"
+          chmod +x "$SOURCE_DIR/gradlew"
+
+          echo "GADGETBRIDGE_SOURCE_DIR=$SOURCE_DIR" >> "$GITHUB_ENV"
 
       - name: Build Bangle.js debug APK
-        working-directory: gadgetbridge
-        run: ./gradlew :app:assembleBanglejsDebug --no-daemon
+        working-directory: ${{ env.GADGETBRIDGE_SOURCE_DIR }}
+        run: |
+          ./gradlew :app:assembleBanglejsDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
-          path: gadgetbridge/app/build/outputs/apk/banglejs/debug/*.apk
+          path: ${{ env.GADGETBRIDGE_SOURCE_DIR }}/app/build/outputs/apk/banglejs/debug/*.apk
           if-no-files-found: error
           retention-days: 30
