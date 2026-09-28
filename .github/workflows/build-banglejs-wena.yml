@@ -27,20 +27,65 @@ jobs:
 
       - name: Extract Gadgetbridge source
         run: |
-          tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz
-          tar -xzf com.espruino.gadgetbridge.banglejs_252_src.tar.gz
-          cd com.espruino.gadgetbridge.banglejs_252_src
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-          chmod +x gradlew
+          mkdir -p extracted
+          tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz -C extracted
+
+          INNER=$(find extracted -type f -name "com.espruino.gadgetbridge.banglejs_252_src.tar.gz" -print -quit)
+
+          if [ -z "$INNER" ]; then
+            echo "ERROR: inner source archive not found"
+            find extracted -maxdepth 3 -type f
+            exit 1
+          fi
+
+          mkdir -p source
+          tar -xzf "$INNER" -C source
+
+          GRADLEW=$(find source -type f -name gradlew -print -quit)
+
+          if [ -z "$GRADLEW" ]; then
+            echo "ERROR: gradlew not found"
+            find source -maxdepth 4 -type f | head -200
+            exit 1
+          fi
+
+          GADGETBRIDGE_DIR=$(dirname "$GRADLEW")
+          echo "GADGETBRIDGE_DIR=$GADGETBRIDGE_DIR" >> "$GITHUB_ENV"
+
+          echo "Gadgetbridge source directory:"
+          echo "$GADGETBRIDGE_DIR"
+
+          echo "sdk.dir=$ANDROID_HOME" > "$GADGETBRIDGE_DIR/local.properties"
+          chmod +x "$GADGETBRIDGE_DIR/gradlew"
 
       - name: Build Bangle.js debug APK
-        working-directory: com.espruino.gadgetbridge.banglejs_252_src
-        run: ./gradlew :app:assembleBanglejsDebug --no-daemon
+        run: |
+          cd "$GADGETBRIDGE_DIR"
+          ./gradlew :app:assembleBanglejsDebug --no-daemon
+
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+
+          APK=$(find "$GADGETBRIDGE_DIR/app/build/outputs/apk" \
+            -type f -name "*.apk" \
+            -print -quit)
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK not found"
+            find "$GADGETBRIDGE_DIR/app/build/outputs" -type f 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "APK found:"
+          echo "$APK"
+
+          cp "$APK" dist/Gadgetbridge-0.93.0-banglejs-Wena-S2T.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
-          path: com.espruino.gadgetbridge.banglejs_252_src/app/build/outputs/apk/banglejs/debug/*.apk
+          path: dist/Gadgetbridge-0.93.0-banglejs-Wena-S2T.apk
           if-no-files-found: error
           retention-days: 30
