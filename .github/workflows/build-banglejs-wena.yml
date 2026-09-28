@@ -28,18 +28,19 @@ jobs:
       - name: Extract Gadgetbridge source
         run: |
           tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz
-          cd com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+          tar -xzf com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+          cd com.espruino.gadgetbridge.banglejs_252_src
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
 
       - name: Build Bangle.js debug APK
-        working-directory: com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+        working-directory: com.espruino.gadgetbridge.banglejs_252_src
         run: ./gradlew :app:assembleBanglejsDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
-          path: com.espruino.gadgetbridge.banglejs_252_src.tar.gz/app/build/outputs/apk/banglejs/debug/*.apk
+          path: com.espruino.gadgetbridge.banglejs_252_src/app/build/outputs/apk/banglejs/debug/*.apk
           if-no-files-found: error
           retention-days: 30
