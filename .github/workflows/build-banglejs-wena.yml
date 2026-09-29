@@ -55,4 +55,3 @@ steps:
       path: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz/app/build/outputs/apk/banglejs/debug/*.apk
       if-no-files-found: error
       retention-days: 30
-```
