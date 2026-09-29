@@ -17,16 +17,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
+      - name: Configure Android SDK
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager \
+          echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+
+          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+          "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
             "platforms;android-36" \
-            "build-tools;36.1.0" \
-            "platform-tools"
+            "build-tools;36.1.0"
 
       - name: Extract Gadgetbridge source
         run: |
@@ -35,8 +36,8 @@ jobs:
           tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz \
             -C extracted
 
-          echo "=== Extracted files ==="
-          find extracted -maxdepth 3 -type f -name gradlew -print
+          echo "=== Locate Gradle wrapper ==="
+          find extracted -type f -name gradlew -print
 
           SOURCE_DIR=$(find extracted -type f -name gradlew -print -quit | xargs dirname)
 
@@ -45,17 +46,29 @@ jobs:
             exit 1
           fi
 
-          echo "SOURCE_DIR=$SOURCE_DIR"
+          echo "Source directory: $SOURCE_DIR"
 
-          echo "sdk.dir=$ANDROID_HOME" > "$SOURCE_DIR/local.properties"
+          echo "sdk.dir=${ANDROID_SDK_ROOT}" > "$SOURCE_DIR/local.properties"
           chmod +x "$SOURCE_DIR/gradlew"
 
           echo "GADGETBRIDGE_SOURCE_DIR=$SOURCE_DIR" >> "$GITHUB_ENV"
 
+      - name: Show Gradle and Android environment
+        working-directory: ${{ env.GADGETBRIDGE_SOURCE_DIR }}
+        run: |
+          echo "Java:"
+          java -version
+
+          echo "Android SDK:"
+          echo "$ANDROID_SDK_ROOT"
+
+          echo "Gradle:"
+          ./gradlew --version
+
       - name: Build Bangle.js debug APK
         working-directory: ${{ env.GADGETBRIDGE_SOURCE_DIR }}
         run: |
-          ./gradlew :app:assembleBanglejsDebug --no-daemon
+          ./gradlew :app:assembleBanglejsDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
