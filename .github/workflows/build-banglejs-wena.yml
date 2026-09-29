@@ -1,94 +1,58 @@
 name: Build Bangle.js Gadgetbridge - Wena Chinese
 
 on:
-  workflow_dispatch:
+workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+```
+steps:
+  - name: Checkout workflow repository
+    uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+  - name: Set up Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: '17'
 
-      - name: Configure Android SDK
-        run: |
-          echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+  - name: Set up Android SDK
+    uses: android-actions/setup-android@v3
 
-          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+  - name: Install Android SDK packages
+    run: |
+      yes | sdkmanager --licenses > /dev/null || true
+      sdkmanager "platforms;android-36" "build-tools;36.1.0" "platform-tools"
 
-          "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.1.0"
+  - name: Extract Gadgetbridge source
+    run: |
+      mkdir -p extracted
 
-      - name: Extract Gadgetbridge source
-        run: |
-          rm -rf extracted
-          mkdir -p extracted
+      tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz \
+        -C extracted
 
-          echo "=== Extract source package ==="
-          tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz \
-            -C extracted
+      SOURCE_DIR="extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz"
 
-          SOURCE_DIR="extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz"
+      echo "Source directory:"
+      echo "$SOURCE_DIR"
 
-          if [ ! -d "$SOURCE_DIR" ]; then
-            echo "ERROR: source directory not found:"
-            echo "$SOURCE_DIR"
-            echo "=== Extracted top-level entries ==="
-            find extracted -maxdepth 2 -print
-            exit 1
-          fi
+      test -f "$SOURCE_DIR/gradlew"
+      test -d "$SOURCE_DIR/app"
 
-          echo "Source directory:"
-          echo "$SOURCE_DIR"
+      echo "sdk.dir=$ANDROID_HOME" > "$SOURCE_DIR/local.properties"
+      chmod +x "$SOURCE_DIR/gradlew"
 
-          echo "=== Check Gradle wrapper ==="
+  - name: Build Bangle.js debug APK
+    working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+    run: ./gradlew :app:assembleBanglejsDebug --no-daemon
 
-          if [ ! -f "$SOURCE_DIR/gradlew" ]; then
-            echo "ERROR: gradlew not found in source directory"
-            echo "=== Source root ==="
-            find "$SOURCE_DIR" -maxdepth 2 -print
-            exit 1
-          fi
+  - name: Upload APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
+      path: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz/app/build/outputs/apk/banglejs/debug/*.apk
+      if-no-files-found: error
+      retention-days: 30
 
-          echo "gradlew found:"
-          echo "$SOURCE_DIR/gradlew"
-
-          echo "sdk.dir=${ANDROID_SDK_ROOT}" > "$SOURCE_DIR/local.properties"
-          chmod +x "$SOURCE_DIR/gradlew"
-
-          echo "GADGETBRIDGE_SOURCE_DIR=$SOURCE_DIR" >> "$GITHUB_ENV"
-
-      - name: Show Gradle and Android environment
-        working-directory: ${{ env.GADGETBRIDGE_SOURCE_DIR }}
-        run: |
-          echo "Java:"
-          java -version
-
-          echo "Android SDK:"
-          echo "$ANDROID_SDK_ROOT"
-
-          echo "Gradle:"
-          ./gradlew --version
-
-      - name: Build Bangle.js debug APK
-        working-directory: ${{ env.GADGETBRIDGE_SOURCE_DIR }}
-        run: |
-          ./gradlew :app:assembleBanglejsDebug --no-daemon --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
-          path: ${{ env.GADGETBRIDGE_SOURCE_DIR }}/app/build/outputs/apk/banglejs/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
