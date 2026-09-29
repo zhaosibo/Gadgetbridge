@@ -7,7 +7,7 @@ jobs:
 build:
 runs-on: ubuntu-latest
 
-```
+
 steps:
   - name: Checkout workflow repository
     uses: actions/checkout@v4
@@ -28,31 +28,19 @@ steps:
 
   - name: Extract Gadgetbridge source
     run: |
-      mkdir -p extracted
-
-      tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz \
-        -C extracted
-
-      SOURCE_DIR="extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz"
-
-      echo "Source directory:"
-      echo "$SOURCE_DIR"
-
-      test -f "$SOURCE_DIR/gradlew"
-      test -d "$SOURCE_DIR/app"
-
-      echo "sdk.dir=$ANDROID_HOME" > "$SOURCE_DIR/local.properties"
-      chmod +x "$SOURCE_DIR/gradlew"
+      tar -xzf com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+      cd com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+      echo "sdk.dir=$ANDROID_HOME" > local.properties
+      chmod +x gradlew
 
   - name: Build Bangle.js debug APK
-    working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+    working-directory: com.espruino.gadgetbridge.banglejs_252_src.tar.gz
     run: ./gradlew :app:assembleBanglejsDebug --no-daemon
 
   - name: Upload APK
     uses: actions/upload-artifact@v4
     with:
       name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
-      path: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz/app/build/outputs/apk/banglejs/debug/*.apk
+      path: com.espruino.gadgetbridge.banglejs_252_src.tar.gz/app/build/outputs/apk/banglejs/debug/*.apk
       if-no-files-found: error
       retention-days: 30
-
