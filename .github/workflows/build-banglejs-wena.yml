@@ -23,7 +23,7 @@ jobs:
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-36" "build-tools;36.1.0" "platform-tools"
+          sdkmanager "platforms;android-36" "build-tools;36.1.0" 
 
       - name: Extract Gadgetbridge source
         run: |
