@@ -34,47 +34,37 @@ jobs:
           rm -rf extracted
           mkdir -p extracted
 
-          echo "=== Extract outer archive ==="
+          echo "=== Extract source package ==="
           tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz \
             -C extracted
 
-          echo "=== Find inner source archive ==="
-          INNER_ARCHIVE=$(find extracted -type f \
-            -name 'com.espruino.gadgetbridge.banglejs_252_src.tar.gz' \
-            -print -quit)
+          SOURCE_DIR="extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz"
 
-          if [ -z "$INNER_ARCHIVE" ]; then
-            echo "ERROR: inner source archive not found"
-            echo "=== Extracted files ==="
-            find extracted -maxdepth 3 -type f -print
+          if [ ! -d "$SOURCE_DIR" ]; then
+            echo "ERROR: source directory not found:"
+            echo "$SOURCE_DIR"
+            echo "=== Extracted top-level entries ==="
+            find extracted -maxdepth 2 -print
             exit 1
           fi
 
-          echo "Inner archive: $INNER_ARCHIVE"
+          echo "Source directory:"
+          echo "$SOURCE_DIR"
 
-          echo "=== Extract inner source archive ==="
-          mkdir -p gadgetbridge
+          echo "=== Check Gradle wrapper ==="
 
-          tar -xzf "$INNER_ARCHIVE" -C gadgetbridge
-
-          echo "=== Locate Gradle wrapper ==="
-          GRADLE_WRAPPER=$(find gadgetbridge -type f \
-            -name 'gradlew' \
-            -print -quit)
-
-          if [ -z "$GRADLE_WRAPPER" ]; then
-            echo "ERROR: gradlew not found after extracting source"
-            echo "=== Extracted source ==="
-            find gadgetbridge -maxdepth 4 -type f -print
+          if [ ! -f "$SOURCE_DIR/gradlew" ]; then
+            echo "ERROR: gradlew not found in source directory"
+            echo "=== Source root ==="
+            find "$SOURCE_DIR" -maxdepth 2 -print
             exit 1
           fi
 
-          SOURCE_DIR=$(dirname "$GRADLE_WRAPPER")
-
-          echo "Source directory: $SOURCE_DIR"
+          echo "gradlew found:"
+          echo "$SOURCE_DIR/gradlew"
 
           echo "sdk.dir=${ANDROID_SDK_ROOT}" > "$SOURCE_DIR/local.properties"
-          chmod +x "$GRADLE_WRAPPER"
+          chmod +x "$SOURCE_DIR/gradlew"
 
           echo "GADGETBRIDGE_SOURCE_DIR=$SOURCE_DIR" >> "$GITHUB_ENV"
 
