@@ -1,45 +1,47 @@
 name: Build Bangle.js Gadgetbridge - Wena Chinese
 
 on:
-  workflow_dispatch:
+workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout workflow repository
-        uses: actions/checkout@v4
+steps:
+  - name: Checkout workflow repository
+    uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+  - name: Set up Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+  - name: Set up Android SDK
+    uses: android-actions/setup-android@v3
+    with:
+      packages: 'platform-tools'
 
-      - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-36" "build-tools;36.1.0" "platform-tools"
+  - name: Install Android SDK packages
+    run: |
+      yes | sdkmanager --licenses > /dev/null || true
+      sdkmanager "platforms;android-36" "build-tools;36.1.0"
 
-      - name: Extract Gadgetbridge source
-        run: |
-          tar -xzf com.espruino.gadgetbridge.banglejs_252_src.tar.gz
-          cd com.espruino.gadgetbridge.banglejs_252_src.tar.gz
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-          chmod +x gradlew
+  - name: Extract Gadgetbridge source
+    run: |
+      tar -xzf com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+      cd com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+      echo "sdk.dir=$ANDROID_HOME" > local.properties
+      chmod +x gradlew
 
-      - name: Build Bangle.js debug APK
-        working-directory: com.espruino.gadgetbridge.banglejs_252_src.tar.gz
-        run: ./gradlew :app:assembleBanglejsDebug --no-daemon
+  - name: Build Bangle.js debug APK
+    working-directory: com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+    run: ./gradlew :app:assembleBanglejsDebug --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
-          path: com.espruino.gadgetbridge.banglejs_252_src.tar.gz/app/build/outputs/apk/banglejs/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
+  - name: Upload APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
+      path: com.espruino.gadgetbridge.banglejs_252_src.tar.gz/app/build/outputs/apk/banglejs/debug/*.apk
+      if-no-files-found: error
+      retention-days: 30
