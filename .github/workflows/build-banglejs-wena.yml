@@ -40,40 +40,36 @@ jobs:
           if [ ! -d "$SOURCE_DIR" ]; then
             echo "ERROR: source directory not found:"
             echo "$SOURCE_DIR"
-            echo "Contents of extracted:"
-            find extracted -maxdepth 3 -type f
             exit 1
           fi
 
           echo "=== Source directory ==="
-          find "$SOURCE_DIR" -maxdepth 2 -type f | head -100
+          ls -la "$SOURCE_DIR"
+          echo "=== Gradle wrapper directory ==="
+          ls -la "$SOURCE_DIR/gradle/wrapper"
 
-      - name: Find Gradle project
-        id: find_project
+      - name: Set up Gradle Wrapper
+        working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
         run: |
-          PROJECT_DIR=$(find extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz -name gradlew -type f -print -quit | xargs -r dirname)
+          gradle wrapper
 
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: gradlew not found"
-            find extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz -maxdepth 4 -type f
+          if [ ! -f "./gradlew" ]; then
+            echo "ERROR: gradlew was not generated"
             exit 1
           fi
 
-          echo "PROJECT_DIR=$PROJECT_DIR"
-          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-
-          echo "sdk.dir=$ANDROID_HOME" > "$PROJECT_DIR/local.properties"
-          chmod +x "$PROJECT_DIR/gradlew"
+          chmod +x ./gradlew
 
       - name: Build Bangle.js debug APK
-        working-directory: ${{ steps.find_project.outputs.project_dir }}
+        working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
         run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
           ./gradlew :app:assembleBanglejsDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
-          path: ${{ steps.find_project.outputs.project_dir }}/app/build/outputs/apk/banglejs/debug/*.apk
+          path: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz/app/build/outputs/apk/banglejs/debug/*.apk
           if-no-files-found: error
           retention-days: 30
