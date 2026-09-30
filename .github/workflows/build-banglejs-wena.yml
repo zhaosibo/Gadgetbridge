@@ -27,6 +27,11 @@ jobs:
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platforms;android-36" "build-tools;36.1.0"
 
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
       - name: Extract source package
         run: |
           rm -rf extracted
@@ -40,30 +45,42 @@ jobs:
           if [ ! -d "$SOURCE_DIR" ]; then
             echo "ERROR: source directory not found:"
             echo "$SOURCE_DIR"
+            echo "Contents of extracted:"
+            find extracted -maxdepth 3 -print
             exit 1
           fi
 
-          echo "=== Source directory ==="
-          ls -la "$SOURCE_DIR"
-          echo "=== Gradle wrapper directory ==="
-          ls -la "$SOURCE_DIR/gradle/wrapper"
+          echo "SOURCE_DIR=$SOURCE_DIR"
+          echo "source_dir=$SOURCE_DIR" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Gradle Wrapper
+      - name: Generate Gradle wrapper
         working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
         run: |
-          gradle wrapper
+          echo "=== Gradle version ==="
+          gradle --version
 
-          if [ ! -f "./gradlew" ]; then
-            echo "ERROR: gradlew was not generated"
-            exit 1
-          fi
+          echo "=== Generate Gradle wrapper 8.13 ==="
+          gradle wrapper --gradle-version 8.13
 
-          chmod +x ./gradlew
+          echo "=== Verify wrapper ==="
+          ls -la
+          ls -la gradle/wrapper
+          test -f gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+
+          chmod +x gradlew
+
+      - name: Configure Android SDK
+        working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          cat local.properties
 
       - name: Build Bangle.js debug APK
         working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
         run: |
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew --version
           ./gradlew :app:assembleBanglejsDebug --no-daemon
 
       - name: Upload APK
