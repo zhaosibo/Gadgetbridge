@@ -51,7 +51,6 @@ jobs:
           fi
 
           echo "SOURCE_DIR=$SOURCE_DIR"
-          echo "source_dir=$SOURCE_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Generate Gradle wrapper
         working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
@@ -59,17 +58,33 @@ jobs:
           echo "=== Gradle version ==="
           gradle --version
 
-          echo "=== Generate Gradle wrapper 8.13 ==="
+          echo "=== Generate Gradle wrapper ==="
           gradle wrapper --gradle-version 8.13
 
-          echo "=== Verify wrapper ==="
-          ls -la
-          ls -la gradle/wrapper
+          chmod +x gradlew
+
+          echo "=== Set official Gradle 8.13 distribution checksum ==="
+          GRADLE_SHA256=$(curl -fsSL https://services.gradle.org/distributions/gradle-8.13-bin.zip.sha256 | awk '{print $1}')
+
+          if [ -z "$GRADLE_SHA256" ]; then
+            echo "ERROR: Could not obtain Gradle 8.13 SHA-256 checksum"
+            exit 1
+          fi
+
+          echo "Official Gradle 8.13 SHA-256:"
+          echo "$GRADLE_SHA256"
+
+          sed -i '/^distributionSha256Sum=/d' gradle/wrapper/gradle-wrapper.properties
+
+          printf '\ndistributionSha256Sum=%s\n' "$GRADLE_SHA256" >> gradle/wrapper/gradle-wrapper.properties
+
+          echo "=== Final gradle-wrapper.properties ==="
+          cat gradle/wrapper/gradle-wrapper.properties
+
+          echo "=== Verify wrapper files ==="
           test -f gradlew
           test -f gradle/wrapper/gradle-wrapper.jar
           test -f gradle/wrapper/gradle-wrapper.properties
-
-          chmod +x gradlew
 
       - name: Configure Android SDK
         working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
@@ -80,7 +95,10 @@ jobs:
       - name: Build Bangle.js debug APK
         working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
         run: |
+          echo "=== Gradle Wrapper version ==="
           ./gradlew --version
+
+          echo "=== Build APK ==="
           ./gradlew :app:assembleBanglejsDebug --no-daemon
 
       - name: Upload APK
