@@ -86,6 +86,27 @@ jobs:
           test -f gradle/wrapper/gradle-wrapper.jar
           test -f gradle/wrapper/gradle-wrapper.properties
 
+      - name: Initialize Git repository for source
+        working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
+        run: |
+          echo "=== Initialize Git repository ==="
+
+          git init
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          git add .
+
+          git commit -m "Build source package"
+
+          echo "=== Git repository ==="
+          git status
+          git log -1 --oneline
+
+          echo "=== Verify .git/HEAD ==="
+          test -f .git/HEAD
+          cat .git/HEAD
+
       - name: Configure Android SDK
         working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
         run: |
