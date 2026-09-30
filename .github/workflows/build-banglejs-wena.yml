@@ -1,101 +1,82 @@
 name: Build Bangle.js Gadgetbridge - Wena Chinese
 
 on:
-workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
-build:
-runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4
 
-steps:
-  - name: Checkout workflow repository
-    uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-  - name: Set up Java
-    uses: actions/setup-java@v4
-    with:
-      distribution: temurin
-      java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3.2.2
+        with:
+          packages: platform-tools
 
-  - name: Set up Android SDK
-    uses: android-actions/setup-android@v3.2.2
-    with:
-      packages: platform-tools
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.1.0"
 
-  - name: Install Android SDK packages
-    run: |
-      yes | sdkmanager --licenses > /dev/null || true
-      sdkmanager "platforms;android-36" "build-tools;36.1.0"
+      - name: Extract source package
+        run: |
+          rm -rf extracted
+          mkdir -p extracted
 
-  - name: Extract source package
-    run: |
-      rm -rf extracted
-      mkdir -p extracted
+          tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz \
+            -C extracted
 
-      tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz \
-        -C extracted
+          SOURCE_ARCHIVE="extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz"
 
-      SOURCE_ARCHIVE="extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz"
+          if [ ! -f "$SOURCE_ARCHIVE" ]; then
+            echo "ERROR: source archive not found:"
+            echo "$SOURCE_ARCHIVE"
+            echo "Contents of extracted:"
+            find extracted -maxdepth 3 -type f
+            exit 1
+          fi
 
-      if [ ! -f "$SOURCE_ARCHIVE" ]; then
-        echo "ERROR: source archive not found:"
-        echo "$SOURCE_ARCHIVE"
-        echo "Contents of extracted:"
-        find extracted -maxdepth 3 -type f
-        exit 1
-      fi
+          mkdir -p extracted/source
+          tar -xzf "$SOURCE_ARCHIVE" -C extracted/source
 
-      mkdir -p extracted/source
-      tar -xzf "$SOURCE_ARCHIVE" -C extracted/source
+          echo "=== Extracted source ==="
+          find extracted/source -maxdepth 2 -type f | head -100
 
-      echo "=== Extracted source ==="
-      find extracted/source -maxdepth 3 -type f | head -200
+      - name: Find Gradle project
+        id: find_project
+        run: |
+          PROJECT_DIR=$(find extracted/source -name gradlew -type f -print -quit | xargs -r dirname)
 
-  - name: Find Gradle project
-    id: find_project
-    run: |
-      PROJECT_DIR=$(find extracted/source -type f -name gradlew -print -quit | xargs -r dirname)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: gradlew not found"
+            find extracted/source -maxdepth 4 -type f
+            exit 1
+          fi
 
-      if [ -z "$PROJECT_DIR" ]; then
-        echo "ERROR: gradlew not found"
-        echo "=== Directory tree ==="
-        find extracted/source -maxdepth 5 -print
-        exit 1
-      fi
+          echo "PROJECT_DIR=$PROJECT_DIR"
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
 
-      PROJECT_DIR=$(cd "$PROJECT_DIR" && pwd)
+          echo "sdk.dir=$ANDROID_HOME" > "$PROJECT_DIR/local.properties"
+          chmod +x "$PROJECT_DIR/gradlew"
 
-      echo "PROJECT_DIR=$PROJECT_DIR"
-      echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+      - name: Build Bangle.js debug APK
+        working-directory: ${{ steps.find_project.outputs.project_dir }}
+        run: |
+          ./gradlew :app:assembleBanglejsDebug --no-daemon
 
-      echo "sdk.dir=$ANDROID_HOME" > "$PROJECT_DIR/local.properties"
-      chmod +x "$PROJECT_DIR/gradlew"
-
-      echo "=== Gradle project ==="
-      ls -la "$PROJECT_DIR"
-
-  - name: Check Bangle.js build task
-    working-directory: ${{ steps.find_project.outputs.project_dir }}
-    run: |
-      ./gradlew tasks --all --no-daemon | grep -i "banglejs" || true
-
-  - name: Build Bangle.js debug APK
-    working-directory: ${{ steps.find_project.outputs.project_dir }}
-    run: |
-      ./gradlew :app:assembleBanglejsDebug --no-daemon
-
-  - name: Show generated APK
-    working-directory: ${{ steps.find_project.outputs.project_dir }}
-    run: |
-      echo "=== Generated APK files ==="
-      find app/build/outputs/apk -type f -name "*.apk" -print
-
-  - name: Upload APK
-    uses: actions/upload-artifact@v4
-    with:
-      name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
-      path: ${{ steps.find_project.outputs.project_dir }}/app/build/outputs/apk/**/*.apk
-      if-no-files-found: error
-      retention-days: 30
-
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gadgetbridge-0.93.0-banglejs-Wena-S2T
+          path: ${{ steps.find_project.outputs.project_dir }}/app/build/outputs/apk/banglejs/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
