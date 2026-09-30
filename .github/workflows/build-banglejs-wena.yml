@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3.2.2
@@ -116,6 +116,9 @@ jobs:
       - name: Build Bangle.js debug APK
         working-directory: extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz
         run: |
+          echo "=== Java version ==="
+          java -version
+
           echo "=== Gradle Wrapper version ==="
           ./gradlew --version
 
