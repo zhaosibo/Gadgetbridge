@@ -35,30 +35,27 @@ jobs:
           tar -xzf Gadgetbridge-0.93.0-banglejs-Wena-S2T-source.tar.gz \
             -C extracted
 
-          SOURCE_ARCHIVE="extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz"
+          SOURCE_DIR="extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz"
 
-          if [ ! -f "$SOURCE_ARCHIVE" ]; then
-            echo "ERROR: source archive not found:"
-            echo "$SOURCE_ARCHIVE"
+          if [ ! -d "$SOURCE_DIR" ]; then
+            echo "ERROR: source directory not found:"
+            echo "$SOURCE_DIR"
             echo "Contents of extracted:"
             find extracted -maxdepth 3 -type f
             exit 1
           fi
 
-          mkdir -p extracted/source
-          tar -xzf "$SOURCE_ARCHIVE" -C extracted/source
-
-          echo "=== Extracted source ==="
-          find extracted/source -maxdepth 2 -type f | head -100
+          echo "=== Source directory ==="
+          find "$SOURCE_DIR" -maxdepth 2 -type f | head -100
 
       - name: Find Gradle project
         id: find_project
         run: |
-          PROJECT_DIR=$(find extracted/source -name gradlew -type f -print -quit | xargs -r dirname)
+          PROJECT_DIR=$(find extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz -name gradlew -type f -print -quit | xargs -r dirname)
 
           if [ -z "$PROJECT_DIR" ]; then
             echo "ERROR: gradlew not found"
-            find extracted/source -maxdepth 4 -type f
+            find extracted/com.espruino.gadgetbridge.banglejs_252_src.tar.gz -maxdepth 4 -type f
             exit 1
           fi
 
